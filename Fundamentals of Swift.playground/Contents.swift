@@ -889,3 +889,308 @@ components.remove(at: 0)
 
 
 
+/*
+ 
+ DATE: 12-03-2026
+ 
+ Revision: Initialization, Access Control, and Classes
+ 
+ 1. Conceptual Understanding
+ 
+ Custom Initializers: I learned that while Structs provide a default memberwise initializer, creating a custom init allows me to set default or random values (like AppID) and simplify how an object is created.
+ Access Control: I practiced using the private keyword. This creates a "black box" where sensitive data (like a securityCode) is hidden from the rest of the app, ensuring data integrity.
+ Classes vs. Structs: I discovered that Classes are the heavy hitters of Swift. Unlike Structs (Value Types), Classes are Reference Types. They support Inheritance, allowing a "Child" class to adopt the traits of a "Parent" class.
+
+ 
+ 2. Logic & Implementation
+ The Power of self: I learned that self is a reference to the current instance. It is essential in initializers to distinguish between a property (self.name) and a parameter (name).
+ Optimization with lazy: I implemented Lazy Properties for expensive tasks like DatabaseConnection(). These properties only "wake up" and consume memory when they are actually called, keeping the initial app launch fast.
+ Shared State with static: I used the static keyword for properties that belong to the type itself (like schoolName) rather than individual students. This creates a single point of truth shared by all instances.
+ Deinitialization: I experimented with deinit to track when an object is removed from memory. This is exclusive to classes and is vital for cleaning up resources (like closing a file or stopping a timer).
+
+ 
+ 3. Safety & Edge Cases
+ Manual Initializers in Classes: Unlike Structs, Classes do not get a free memberwise initializer. I learned that I must provide my own init or the code will not compile.
+ Final Classes: I used the final keyword to prevent other developers from inheriting from a class (like the Fish class). This is a safety measure to protect logic that shouldn't be overridden.
+ Override Safety: When inheriting, I used super.init to ensure the parent class is set up correctly before the child class adds its own logic. This prevents crashes due to uninitialized properties.
+
+ 
+ 4. Critical Lessons
+ The Problem: I was confused why changing a copy of a Singer class changed the original, but doing the same with a Singerr struct did not.
+ The Solution: I realized the "Identity" vs. "Value" difference.
+ Structs are like printing two separate copies of a document; changing one doesn't affect the other.
+ Classes are like sharing a link to a Google Doc; everyone with the link is looking at and editing the exact same file.
+ I realized classes don't need mutating because the reference to the class is constant, but the content it points to is fair game. This makes Classes more flexible for complex data but requires more care to avoid accidental changes.
+ 
+ 
+ 
+ */
+
+
+//Initializer is a type of function that is an instance of the struct
+
+struct Payment {
+    var AppID: Int
+    var AppName: String
+    
+    // Custom Initializer: Only requires a name
+    init(name: String) {
+        self.AppID = Int.random(in: 100...999) // Let's give it a random ID
+        self.AppName = name
+    }
+    
+    // To enter everything manually
+    init(id: Int, name: String) {
+        self.AppID = id       //self points to whatever instance of the struct is currently being used.
+        self.AppName = name
+    }
+}
+
+// Option A: Using the custom init
+let guestApp = Payment(name: "Guest User")
+print(guestApp.AppID) // Some random number
+
+// Option B: Using the manual init
+let specificApp = Payment(id: 436, name: "Premium App")
+print(specificApp.AppName) // Premium App
+
+
+//Referring to the current instance
+
+struct Player {
+    var name: String
+    
+    
+    init(name: String) {
+        // self.name refers to the property above
+        // name refers to the value passed into the init
+        self.name = name
+    }
+}
+ 
+
+//Lazy property is created to save memory and processing time because they are not being used immediately when the instance is created
+
+struct DatabaseConnection {
+    init() {
+        print("Connected to Database... (This was expensive!)")
+    }
+}
+
+struct AppGenerator {
+    var name: String
+    // This won't run when AppGenerator is created!
+    lazy var connection = DatabaseConnection()
+
+    init(name: String) {
+        self.name = name
+    }
+}
+
+var myApp = AppGenerator(name: "PhotoEdit")
+// At this point "Connected to Database" has NOT been printed
+
+print("App is ready.")
+print(myApp.connection) // the connection is created now
+
+
+//Static properties belongs to the struct itself not to the instances (mostly used for count based application. It is a single variable which is shared by everyone in the instance.
+
+struct Student {
+    static let schoolName: String = "New York University" //this belongs to the struct and not the instance created
+    var name: String
+    
+}
+
+let student1 = Student(name: "Alice")  //Instances
+let student2 = Student(name: "Bob")  //Instances
+
+print(Student.schoolName) //It is a shared variable to all Student instances
+
+
+
+//private property allows access limited to members of the particular struct
+
+//Another example - locker
+struct Locker {
+    var lockerNumber: Int       // Everyone can see this (public and internal)
+    private var securityCode: Int // Hidden from the outside (private)
+
+    init(number: Int, code: Int) {
+        self.lockerNumber = number
+        self.securityCode = code
+    }
+}
+
+var myLocker = Locker(number: 101, code: 5555)
+
+// This works fine
+print("I am at locker \(myLocker.lockerNumber)")
+
+// This will cause a crash (trying to access a private variable)
+// print("The secret code is \(myLocker.securityCode)")
+
+
+
+//Classes - they are like structs, it is used to create new types with their own properties and methods
+
+//1. Difference - Classes do not come with memberwise initializer while for structs Swift automatically creates a memberwise initializer
+
+struct Puppy {
+    let name: String
+    let age: Int
+    
+}
+
+let myPuppy = Puppy(name: "Robbie", age: 1) //Swift automatically created it since they are simple data containers
+
+
+class ChessPiece {
+    let type: String
+    
+    init(type: String) {     //We have to create initializers in class or the code won't compile
+        self.type = type
+    }
+}
+
+let myPiece = ChessPiece(type: "Rook")
+
+
+//2. Difference - Classes can be created based from another class(it can inherit all properites and mmethods of the original class and add some of its own -> Inheritance) but its not the same case with structs
+
+class Dog {
+    var name: String
+    var breed: String
+    
+    init(name: String, breed: String) {
+        self.name = name
+        self.breed = breed
+    }
+}
+
+class GoldenRetriever: Dog {
+    init(name: String) {                                    //child class GoldenRetriever has its own initializer
+        super.init(name: name, breed: "Golden Retriever")  //initializes the parent class (Dog) to avoid crashing
+    }
+}
+
+
+
+//Method Overriding - use override func to override the method from parent class
+
+//In the example below, class Siamese overrides the MakeNoise() function from its parent class.
+
+class Cat {
+    
+    func MakeNoise() {
+        print("Meow")
+    }
+}
+
+class Siamese: Cat {
+    override func MakeNoise() {
+        print("Siamese Meow")
+    }
+}
+
+//final classes are classes that cannot be inherited. They cannot have their methods overriding.
+
+final class Fish {
+    var name: String
+    var color: String
+    
+    init(name: String, color: String) {
+        self.name = name
+        self.color = color
+    }
+}
+
+/* Gives erorr
+
+class salmon: Fish {
+
+}
+
+*/
+
+
+//3. Difference - when we copy a struct, the original and copy remains two different things, while for classes when one of them is changed (copy or original point to the same thing), it changes the other.
+// Copy refers to creating an instance
+
+
+class Singer {
+    var name = "Taylor Swift"
+    
+}
+
+let singer1 = Singer()
+print(singer1.name)         //Prints Taylor Swift
+
+let singer2 = singer1
+singer2.name = "Katy Perry"
+
+print(singer1.name)         //Prints Katy Perry
+
+
+
+struct Singerr {
+    var name = "Taylor Swift"
+    
+}
+
+var singer11 = Singerr()
+print(singer1.name)         //Prints Taylor Swift
+
+var singer22 = singer11
+singer22.name = "Katy Perry"
+
+print(singer11.name)         //Prints Taylor Swift (structs creates a new variable for each instance)
+
+
+//4. Difference - Classes can have deinitializers, they are code that run when an instance of a class is destroyed
+
+class DestroyInstance {
+    var name = "Mary Shepherd"
+    
+    init(){
+        print("\(name) is Alive!")
+    }
+    deinit{
+        print("Mary is dead.")
+    }
+    func greeting (){
+        print("Hello, my name is \(name)")
+    }
+    
+     
+    
+}
+
+ 
+for _ in 1...3 {                //when the instance reach 3 in number, the 'deinit' triggers and prints "Mary is dead"
+    let state = DestroyInstance()
+    state.greeting()
+}
+ 
+
+//5. Difference - Class does not need mutating property. If we have a constant class with a variable property, that property can be changed. Because of this, classes don’t need the mutating keyword with methods that change properties, that’s only needed with struct
+
+class SSinger {
+    var name = "Taylor Swift"
+    
+}
+
+let ssinger1 = SSinger()
+print(ssinger1.name)         //Prints Taylor Swift
+
+let ssinger2 = ssinger1
+singer2.name = "Katy Perry"
+
+print(ssinger1.name)         //Prints Katy Perry
+
+
+
+
+
+
+
