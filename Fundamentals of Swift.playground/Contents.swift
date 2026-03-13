@@ -1193,4 +1193,162 @@ print(ssinger1.name)         //Prints Katy Perry
 
 
 
+/*
+ DATE: 13-03-2026
+ 
+ Revision: Protocols & Extensions
+ Topic: Protocol-Oriented Programming (POP)
+ 
+ 
+ 1. Conceptual Understanding
+ Protocols (The Blueprint): I learned that protocols are "rules" or "contracts" that define exactly what properties and methods a type must have. A protocol doesn't do anything on its own; it just sets the standard for others to follow.
+ Extensions: These allow me to add new functionality to existing types (like Int, String, or Double) without having to access their original source code.
+ Protocol-Oriented Programming (POP): I discovered that by combining protocols with extensions, I can provide default implementations. This makes methods "optional" to override and allows for shared behavior across different types.
+
+ 
+ 2. Logic & Implementation
+ Task: Building a modular authentication system and enhancing Swift's built-in data types.
+ Protocol Inheritance: I practiced merging multiple small protocols (like PayPayment and Training) into a single Employee protocol. This enforces "all-or-nothing" compliance for complex types.
+ Type Enhancement: I used extensions to add custom computed properties:
+ Int.isEven: Returns a boolean check on the number.
+ String.isPalindrome: Uses reversed() to check if a word reads the same backward.
+ Double.percentage: Quickly converts a whole number to its decimal percentage equivalent.
+
+ Default Implementation: In my AuthenticationService, I provided a default logout() method in an extension. This means any struct or class conforming to it gets logout functionality for "free."
+
+ 3. Safety & Edge Cases
+ Get/Set Requirements: I learned that protocol properties must explicitly state if they are readable (get) or writable (set). This prevents logic errors where a constant is expected but a variable is provided.
+ Mutating Protocol Methods: Since I don't know if a struct (value type) or class (reference type) will use my protocol, I must mark methods that change internal data as mutating.
+ Optionality: By moving a method into a protocol extension, it becomes optional for the conforming type to implement. If the type doesn't provide its own version, Swift safely uses the default.
+
+ 4. Critical Lessons
+ The Problem: I was trying to create an instance of a protocol directly, which resulted in a compiler error.
+ The Solution: I realized that protocols are types, not objects. You can’t make a "Protocol object," but you can make a variable that holds any object conforming to that protocol.
+ The Lesson: Protocol-oriented programming is often better than Class-based inheritance because it allows a type to conform to many protocols at once, whereas a class can only have one parent.
+ 
+ */
+
+
+// Protocols - way of describing what properties and methods (Rules) of a class, struct or enum must have if they claim to conform to a protocol
+//We cannot create instances of the protocol, a type (class, struct, enum) follows a protocol
+
+protocol Identifyable {
+    var id: String { get set }  //you must specify if a property is getter or setter or both (get, set)
+    func logID()   //logID method is created hence any type conforming to this protocol must implement this method
+}
+
+struct User {
+    var id: String
+    
+    func logID(){
+        print("The login ID is generated for \(id)")
+    }
+}
+
+
+//Protocol extension (having some methods optional to implement)
+//Protocol-oriented programming is the practice of designing your app architecture as a series of protocols, then using protocol extensions to provide default method implementations
+
+protocol AuthenticationService {
+    var currentUserID: String? { get set}
+    
+    func login(username: String, password: String)  //only define the 'method names' and 'parameters' in the protocol
+    
+    //Use mutating because we don't know if a class or struct will conform
+    mutating func logout()
+}
+
+//This is default - if it is implemented in a struct or class and if the class or struct doesn't write a custom version of this method, this will be implemented, it could also be optional (methods implemented in this don't neccesarily be implemented in a struct or class which conforms to the protocol)
+
+extension AuthenticationService {
+    mutating func logout() {
+        currentUserID = nil
+    }
+}
+
+
+struct UserLogin {
+    var id: String
+    var currentUserID: String?
+    
+    
+   
+}
+
+extension UserLogin: AuthenticationService {
+    func login(username: String , password: String) {
+        print("User logged in")
+    }
+    
+
+}
+
+
+
+//Protocol inheritance - we can inherit many protocols into one
+
+protocol PayPayment {
+    func payable()
+}
+
+protocol Training{
+    func study()
+}
+
+protocol Timings {
+    func shift()
+}
+
+//All three protocols inherited into one - Employee
+
+protocol Employee : PayPayment, Training, Timings { }  //the conforming type of Employee protocol is forced to implement the methods from all the inherited protocols (PayPayment, Training, Timings)
+
+
+protocol Readable{
+    func read()
+}
+
+protocol Writable {
+    func write()
+}
+
+protocol FileManager: Readable, Writable {
+    func sync()
+}
+
+
+//computed values - extensions helps us to add methods to specific types like Int, Double, Float, String
+
+extension Int {
+    var isEven: Bool {
+        return self % 2 == 0
+    }
+}
+
+var number12 = 6
+
+print(number12.isEven)
+
+
+
+extension String {
+    var isPalindrome: Bool {
+        return String(self.reversed()) == self
+    }
+}
+
+var string1 = "racecar"
+print(string1.isPalindrome)
+
+var string2 = "hello"
+print(string2.isPalindrome)
+
+
+
+extension Double {
+    var percentage: Double {
+        return self / 100
+    }
+}
+
 
