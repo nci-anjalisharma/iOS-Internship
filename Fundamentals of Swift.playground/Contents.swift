@@ -623,3 +623,269 @@ garden{ place in
 }
 
 
+
+
+/*
+-------
+DATE : 10-03-2026 & 11-03-2026
+ 
+Revision: Advanced Closures & Struct Fundamentals
+ 
+ 1. Conceptual Understanding
+ Closure Versatility:
+ I learned that closures are Reference Types. They can be passed into functions, stored in variables, and even returned from functions like a "logic factory."
+ Structs as Blueprints: I started building my own data types using Structs. Unlike closures, Structs are Value Types, meaning they are copied when passed around, which ensures dat
+ isolation.
+ Property Observers & Computation: I moved beyond simple storage to Computed Properties (logic-based values) and Property Observers (didSet), which allow the code to react instantly when a value changes.
+
+ 
+ 2. Logic & Implementation
+ Task: Simulating network requests, image downloads, and managing bank/population data.
+ Multi-Parameter Closures: I implemented closures that accept multiple arguments (e.g., (String, Int) -> String). I used shorthand $0, $1 to access these without naming them.
+ Callback Architecture: In fetchUserData and imageDownloader, I used closures as "completion handlers." The function does the work, then "calls back" with success or failure data.
+ Mutating Methods: I learned that since Structs are value types, their internal properties cannot be changed by their own functions unless the function is explicitly marked with the mutating keyword.
+ 
+ 
+ 3. Safety & Edge Cases
+ Immutability Safety: I discovered that if a Struct instance is declared with let, I cannot call its mutating methods, even if the method itself is valid. This enforces strict data safety.
+ Failure Handling: In my network simulations, I provided an onFailure closure. This ensures the app has a specific logical path to follow if a "404 Error" occurs, preventing a silent failure.
+ String & Array Safety: I practiced using .hasPrefix() and .firstIndex(of:), which safely check for data existence rather than assuming it's there and risking a crash.
+ 
+ 
+ 4. Critical Lessons
+ The Problem: I struggled with closures that return closures—the "function within a function" logic.
+ The Solution: I realized that calling the first function just "unwraps" the package. I have to assign that result to a variable and then call that variable like a function to execute the final logic.
+ The Lesson: Structs are for Data (state); Closures are for Action (behavior). Use didSet when you want to automate UI updates every time a variable like percentage is updated.
+
+ */
+
+
+// Closures with multiple parameters. Here it accepts String and Int type parameters for which 'Dublin' and 56 are the arguments passed.
+
+func place(destination: (String, Int) -> String) {
+    print("Today we are going to Scotland")
+    let placeName = destination("Dublin", 56)
+    print(placeName)
+    print("This is going to be an amazing trip!")
+}
+
+place {
+    "I'm going to \($0) with \($1) euros in my pocket!"
+}
+
+
+//Returning closures from functions
+
+func travell() -> (String) -> Void {
+    return {
+        "I'm going to \($0) on Tuesday"  //a function returning a function (closure)
+        
+    }
+}
+    
+let result = travell()  //result is now a callable function
+result("Birmingham") //'Birmingham' is passed as an argument in the result function
+
+
+
+//More closure practice... (Because it it kinda unclear to me, especially closures being used as a parameter in a function while having its own parameters)
+
+//Closures are variables that perform a task, they can be passed and returned to and from a function like String or Int type variables
+//Closure are reference types
+
+
+func fetchData (source: String, onComplete: (String) -> Void) {
+    print("Connecting to \(source)...") //There could be a delay here
+    
+    let data = "Data is received! Here is your data."
+    
+    onComplete(data)  //Calling the closure once we have the data
+}
+
+//Using the closure
+
+fetchData(source: "google.com") { result in
+        print("The app recieved this: \(result)")
+}
+
+
+//Name sorting
+
+let names = ["Apple", "Samsung", "Google", "Blackberry", "Nokia"]
+
+let sortedName = names.sorted(by: { (s1: String, s2: String) -> Bool in
+    return s1.count > s2.count
+    
+})
+
+print(sortedName)
+
+
+//Network Request
+
+func fetchUserData(userID: Int, onSuccess: (String) -> Void, onFailure: (String) -> Void) {
+    print("Connecting the server to the User with ID \(userID)...")
+    
+    let network = false
+    
+    if network {
+        let profileName = "Sherlock Homes"
+        onSuccess(profileName)    //calling the closure
+    } else {
+        onFailure("Error 404 - User Not Found!")
+    }
+}
+
+//Using the closures
+
+fetchUserData(userID: 564) { name in
+    print("Welcome \(name)! Here is your dashboard.")
+    
+} onFailure: { ERROR in
+    print("Alert! \(ERROR) Please check your internet connection!")
+}
+
+//Image downloader
+
+func imageDownloader (imageID: Int, onProgress : (Double) -> Void, onCompletion : (String, Bool) -> Void) {
+    print("Connecting to the server for image \(imageID)...")
+    
+    onProgress(0.7)
+    
+    let imageName = "Sunset.png"
+    let status = true
+    
+    onCompletion(imageName, true)  //calling the closure
+}
+
+//Using the closure
+
+imageDownloader(imageID: 475) { percent in
+    print("The image is downloading with a progress of \(percent * 100) percent")
+} onCompletion: { name, status in
+    if status {
+        print("Image \(name) download was successful")
+    } else {
+        print("Image download failed!")
+    }
+}
+
+
+//structs - structures that let us define our own data type
+
+struct Sports {
+    var name: String  //name is store property because it stores a value
+}
+
+
+//creating an instance of the struct Sports
+var tennis = Sports(name: "Tennis")
+
+print(tennis.name)
+
+
+//Computed values in structs
+
+struct Sport {
+    var name: String
+    var isOlympicSports: Bool
+    
+    //computed value
+    var olympicStatus: String {
+        if isOlympicSports {
+            return("\(name) is an Olympics sport")
+            
+        } else {
+            return ("\(name) is not an Olympics sport")
+        }
+    }
+}
+
+let chess = Sport(name: "Chess", isOlympicSports: false)
+print(chess.olympicStatus)
+
+
+//Using 'didSet' property
+
+struct Progress {
+    var task: String
+    var percentage: Int {
+        didSet {
+            print("\(task) is now \(percentage)% complete")
+        }
+    }
+}
+var progress = Progress(task: "Loading data", percentage: 0)
+progress.percentage = 10
+progress.percentage = 15
+
+
+
+//Methods - functions inside structs
+
+struct Population {
+    var country: String
+    var population: Int
+    
+    func collectTaxes() -> Int {
+        return population * 10_000
+        
+    }
+    
+}
+
+var China = Population(country: "China", population: 90_000)
+China.collectTaxes()
+ 
+
+//Mutating methods - If we try to change a property inside a normal function, we get a "Cannot assign to property: 'self' is immutable" error. By adding mutating, we give the function permission to change the properties of the struct.
+
+/*
+struct BankAccount {
+    var balance : Int
+    
+    func deposit(amount: Int){
+        balance += amount
+        print("The total balance is \(balance)")
+    }
+}
+*/
+//Rewriting with 'mutating' keyword
+
+struct BankAccount {
+    var balance : Int
+    
+    mutating func deposit(amount: Int){
+        balance += amount
+        print("The total balance is \(balance)")
+    }
+}
+
+var myBankAccount = BankAccount(balance: 100) //cannot use mutating if its a contant 'let'
+myBankAccount.deposit(amount: 348)
+
+
+//Properties and methods of Strings
+
+let myString = "My name is Anthony"
+
+print(myString.count)
+print(myString.sorted())
+print(myString.uppercased())
+print(myString.lowercased())
+print(myString.hasPrefix("My"))
+print(myString.hasSuffix("y"))
+
+
+//Properties and methods of Arrays
+
+var components = ["View", "Activity"]
+
+print(components.count)
+components.append("Authenticate")
+components.firstIndex(of: "Activity")
+components.sorted()
+components.remove(at: 0)
+
+
+
