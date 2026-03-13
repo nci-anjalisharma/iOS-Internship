@@ -424,3 +424,202 @@ default:
 //ternary operator - used to check the condition and execute a statement/print function (like if-else) in a single statement. Condition + True/False block
 
 print(number1 == number2 ? " The numbers are same" : "The numbers are not same")
+
+
+
+/*
+DATE: 5th & 6th March - 2026
+ 
+Topics covered here -
+ 1. Functions
+ 2. Closures
+ 
+ 
+1. Conceptual Understanding
+ Function: Functions are units of logic that can return data, handle errors, and modify external variables. They are a block of code that is used to perform a repetitive task.
+
+ Closure: I discovered that closures are effectively "stored logic." Unlike functions, they don't require parameter labels when called. They are like anonymous functions.
+
+ Higher-Order Logic: I moved from simple functions to those that accept closures as parameters. This allows for "deferred execution" that means defining what to do now, but letting the function decide when to do it.
+ 
+ */
+
+
+//Writing functions
+
+func printHelp() {
+    let message = """
+        This is a Help message sent out to all the ships in the vicinity! SOS!
+        """
+    print(message)
+}
+
+printHelp()
+
+
+//Funtions with parameters
+func greeting(Name: String){
+    let greet = "Hello, \(Name). Welcome to the Pirates academy!"
+    print(greet)
+}
+greeting(Name: "Samuel")
+
+
+//Functions with parameter and return type
+func greet(Name: String) -> String {
+    let greet = "Hello, \(Name). Welcome to the academy!"
+    return greet
+}
+greet(Name: "John")
+
+//Parameter labels (internal and external names)
+func greeet(to name: String) {
+    let vaar = "Hellooooooo \(name)!!!"
+    print(vaar)
+}
+greeet(to: "Rosie")
+
+
+//Omitting parameter labels using '_'
+
+func greeeet(_ name: String) -> String{
+    let greet = "Hello \(name), this is your first task!"
+    return greet
+}
+
+greeeet("Shreya")
+
+
+//Default parameters - here the bool value is true hence it becomes the default unless function is called explicity specifying false
+
+func specialGreet(person: String, nicely: Bool = true){
+    if nicely == true {
+        print("Welcome \(person)! It is so great to see you!")
+        
+    } else{
+        print("Oh no, its \(person) again! Go away! You are not invited!")
+    }
+}
+specialGreet(person: "Anil", nicely: true)
+specialGreet(person: "Anuj", nicely: false)
+
+
+//Variadic functions - functions that accept any number of parameters of the same type
+//Here Int... possibly ranges from 0 to hundreds and it creates an array for the values and we can use loops or conditions easily
+
+func square(numbers: Int...){
+    for number in numbers {
+        print("\(number) squared is \(number * number)")
+    }
+}
+
+square(numbers: 1,2,3,4,5,6,7,8)  //while passing arguments, use commas to seperate multiple arguments
+
+
+
+
+//Throwing functions creation
+//creating an enum - a group of related values stored together for avoiding spelling error or similar errors.
+enum PasswordError: Error {
+    case Obvious
+    case TooShort
+    case CharacterSetMismatch
+}
+
+func CheckPassword(_ Password: String) throws -> Bool {
+    if Password == "password" {
+        throw PasswordError.Obvious
+    }else if Password.count < 4 {
+        throw PasswordError.TooShort
+    }
+    return true
+}
+
+//Use do try-catch block to handle errors gracefully for functions (arguments) that may cause error otherwise app will crash
+do {
+    try CheckPassword("Aooee")
+    print("Password works")
+} catch {
+    print("You cannot use that password! Choose another!")
+}
+
+
+//inout parameters are used for when values of the parameters (variables) can change inside the function. This is used because parameters are constants and their value cannot be changed.
+//inout the reference of the variable is copied along with the initial value assigned.
+
+func DoubleValue (number: inout Int){
+    number *= 2
+}
+var num = 8
+DoubleValue(number: &num)
+
+
+
+//Closures are functions without a name
+//Here we created a fucntion and assigned to variable driving.
+
+let driving = {
+    print("You are driving now!")
+}
+driving()
+
+//We can accept parameters using 'in'. Anything before 'in' can be written as parameter of a regular function that is followed by the content of the function
+
+let riding = { (Name: String, destination: String) in
+    print("\(Name) is riding to \(destination)")
+    
+}
+riding("Amul", "Bangalore") //we do not use parameter labels in closure
+
+//Returning from a closure
+
+let RidingWithReturn = { (place: String) -> String in
+    return "This place is \(place)"
+    
+}
+
+RidingWithReturn("Mumbai")
+
+
+func travel(driving: () -> Void){
+    driving()
+    print("This is first action")
+    driving()
+    print("This is second action")
+    
+}
+
+//trailing closure because in our function the last parameter was a closure
+
+travel() {
+    print("\nI'm ready to drive\n")  //replaces the driving()
+}
+
+//Using closures as parameters when they accept a parameter
+
+func TravelTuesday(riding: (String) -> String){
+    print("We are travellers of Tuesdays")
+    riding("Anmol")
+    return print("This is going to be an amazing day")
+}
+
+ TravelTuesday { (Name: String) in
+    "\(Name) is riding to the moon"
+}
+
+func garden(seeds: (String) -> String) {
+    print("This season we are going to plant lots of seeds!")
+    let fruit =  seeds("Chilli")
+    print(fruit)
+    print("Its going to give a lot of fruits")
+}
+
+garden { (seed: String) -> String in
+    return "We are planting \(seed) this season"
+}
+
+garden{ place in
+    "We are going to sell \(place) this season!!!"  //We can also write it like this to make the syntax short and neat
+}
+
+
