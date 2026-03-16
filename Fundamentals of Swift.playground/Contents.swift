@@ -1352,3 +1352,232 @@ extension Double {
 }
 
 
+
+/*
+ DATE: 16-03-2026
+ 
+ Revision: Optionals & Typecasting
+ Topic: Swift Safety & Dynamic Typing
+
+ 1. Conceptual Understanding
+ Optionals: A "box" that either contains a value or nil. This prevents crashes by forcing me to acknowledge the possibility of missing data.
+ Nil Coalescing (??): A fallback mechanism that provides a default value if an optional is empty.
+ Typecasting: The process of treating an instance as a different type in its hierarchy, using as? (safe) or as! (forced).
+
+ 
+ 2. Logic & Implementation
+ Task: Safely handling user input and managing collections of different object types.
+ Unwrapping Logic: * if-let for localized use; guard-let for early exits to keep the main code path clean.
+ Optional Chaining: Using ?. to safely access properties deep within a nested structure.
+ Type Management: Used as? inside loops to "downcast" generic items (e.g., Device) into specific subclasses (e.g., Laptop) to access their unique methods.
+
+ 
+ 3. Safety & Edge Cases
+ Force Unwrapping (!): I learned this is a "crash risk" and should be avoided unless it is 100% certain the value is not nil.
+ The try? Pattern: Learned to simplify error handling by converting throwing functions into optionals, bypassing the need for a do-catch block.
+ Any vs. AnyObject: Used Any to store a mix of strings, integers, and doubles in a single array, utilizing switch and as for type-specific logic.
+
+ 
+ 4. Critical Lessons
+ The Problem: Attempting to use a subclass method (like phone.call()) on a parent type variable (like Device).
+ The Solution: Downcasting. Swift requires explicit casting with as? to "unlock" the specific features of a subclass.
+ The Lesson: Optionals are a contract. They turn potential runtime crashes into compile-time requirements, ensuring the developer handles every "empty" scenario.
+ 
+ 
+ */
+
+
+//Optionals - to declare varibles that hold nil value initially. They are also used to avoid errors (containg no value or absent data) that may crash the app.
+
+var info: Int? = nil  //info holds no value
+
+info = 43 //can be initilised later
+
+
+//Unwrapping an optional - we use if-let for optinionals. In this case below, if optionalString is empty and we're trying to count the string, it will throw an error
+
+let optionalString: String? =  nil
+
+// print(optionalString.count)      throws an error
+
+if let unwrappedString = optionalString {
+    print(unwrappedString.count)   //optionalString is available here (only inside the loop)
+} else {
+    print("Empty string")
+}
+
+//optionalString is not available here
+
+
+//Optional unwrapping using guard-let (when a value is required for the rest of the function to work. In this control flow, we must exit the loop (return, throw, continue)
+
+func greeting(name: String?) {
+    guard let name = name else {
+        print("No name is provided. Enter a name to continue.")
+        return
+    }
+    print("Hello, \(name)!")  //name is only available outside the guard-let unwarapping
+    
+}
+
+//Forced unwarapping - use '!' for forced unwrapping (only when sure nnumber is not nil otherwise it will crash).It converts the nnumber to regular Int rather than optional Int?
+//
+
+var nnumber = "5"
+let str = Int(nnumber)!  //forced unwrapping  (Never used)
+
+
+
+//Implicit optional unwrapping -this optional doesn't need unwrapping like regular ones, we can consider them as unwrapped (don't need to use if-let or guard-let
+
+let value: Int! = nil
+
+
+//nil coalescing operatator - using the backup value when the variable is nil
+
+func getName(id: Int) -> String? {
+    if id == 1 {
+        return "Success"
+    } else {
+        return nil
+    }
+}
+
+let user = getName(id: 10) ?? "Anonymous"  //?? is the nil coalescing operator. Since 15 was not 1, it returned nill and got the backup value "Anonymous
+
+
+//Optional chaining -checking for something specific on a single line rather than nested if-let (its the path)
+
+struct House {
+    var title: String? = nil
+
+}
+
+
+let myHome: House? = House(title: "BlueHouse")
+ 
+
+let myTitle = myHome?.title?.uppercased()       //if myHome was nil, it would stop there and return nil. '.uppercased is used when all other optionals are not nil'
+
+
+
+//using nil coalescing in optional chaining  -it gives a default value (provided after ??) if it returns nil
+ struct House2 {
+    var title: String? = nil
+}
+
+let myHome2: House2? = House2(title: nil)
+
+let myTitle2 = myHome2?.title?.uppercased() ?? "Found nothing"
+print(myTitle2)
+
+
+//Optional try -using in do try catch block
+
+func CheckPassword(password: String) throws -> Bool {
+    if password.count < 6 {
+        throw PasswordError.TooShort
+       
+    }
+    return true
+  
+}
+
+if let result = try? CheckPassword("12454") {
+    print(result)
+} else {
+    print("Invalid!")
+}
+
+
+//Typecasting - to check the type of an instance
+
+var stringVar: Any = "Hello"
+
+if let stringValue = stringVar as? String {
+    print("It's a string")
+}
+
+//we use 'as'
+
+class Devices {
+}
+
+class Phone: Devices {
+    func calling () {
+        print("Phone is calling")
+    }
+}
+
+class Tablet: Devices {
+    func browsing () {
+        print("Tablet is browsing")
+    }
+}
+
+class Laptop: Devices {
+    func coding () {
+        print("Laptop is coding")
+    }
+}
+class CDPlayer: Devices {
+    func play(){
+        print("Playing...")
+    }
+}
+
+let bag: [Devices] = [Phone(), Tablet(), Laptop()]
+
+for items in bag {
+    
+     if let phone = items as? Phone {      //checks if its a phone, if it is, only phone function runs
+        phone.calling()
+    }
+    
+    if let myLaptop = items as? Laptop {
+        myLaptop.coding()
+    }
+    
+    if let myCDevice = items as? CDPlayer {
+        myCDevice.play()   //shows nil
+    }
+}
+
+
+
+let things: [Any] = [3.14, "Claude", 42]
+
+for thing in things {
+    
+    switch thing {
+    // Checking if it's a Double (as? is not needed inside case just use 'as')
+    case let someDouble as Double:
+        print("The circle constant is \(someDouble)")
+        
+    // Checking if it's a string
+    case let someString as String:
+        print("The AI name is \(someString)")
+        
+    // Checking if it's an int
+    case let someInt as Int:
+        print("The answer to everything is \(someInt)")
+        
+    default:
+        print("Unknown item")
+    }
+}
+
+
+
+let valuee: Any = "100"
+
+
+//Gives nil because valuee is a string
+if let number = value as? Int {
+    print("It's a number!")
+} else {
+    print("It's not a number!")
+}
+
+
+
