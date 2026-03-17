@@ -1581,3 +1581,220 @@ if let number = value as? Int {
 
 
 
+import Foundation
+
+/*
+ 
+ Date: 17-03-2026
+ Revision: Concurrency & Modern Swift
+ Topic: Async/Await, Tasks, and Task Groups
+
+ 
+ 1. Conceptual Understanding
+ Concurrency: The ability to run multiple pieces of code simultaneously so that heavy operations (like networking) don't freeze the user interface.
+ Main vs. Background Threads: * Main Thread: Handles all UI events (button taps, animations).
+ Background Thread: Handles "heavy lifting" (data downloading, image processing, database queries).
+ Async/Await: A modern way to write asynchronous code. async marks a function that can pause, and await is the marker where the pause actually happens.
+
+ 2. Logic & Implementation
+ Task: Creating a weather reporting system and simulating multiple network requests.
+ The Task Block: I used Task { } to bridge the gap between synchronous and asynchronous code, allowing async functions to run on their own threads.
+ Execution Flow: I observed that the Main Thread continues to execute while Task blocks are pending. This explains why "Weather report for London..." prints before the actual weather data is returned.
+ Parallel Execution:
+async let: Used for a fixed number of simultaneous tasks (e.g., fetching a profile and a picture at once).
+withTaskGroup: Used for a dynamic or unknown number of tasks. It allows adding multiple tasks in a loop and collecting results as they finish.
+
+ 
+ 3. Safety & Edge Cases
+ Thread Safety: I learned that UI updates must always return to the Main Thread (traditionally via DispatchQueue.main.async or modern @MainActor).
+ Sleep & Delays: I used Task.sleep(nanoseconds:) to simulate network latency, learning that it is a non-blocking pause—meaning the thread isn't "frozen," it’s just waiting.
+ Task Groups: I learned that while Task Group tasks run in parallel, the order in which they return depends on their individual completion times, not the order they were added.
+
+ 
+ 4. Critical Lessons
+ The Problem: Sequential await calls were making the app slow because each task waited for the previous one to finish entirely.
+ The Solution: I implemented Parallelism. By using async let and Task Groups, I triggered multiple requests at the same time, reducing the total wait time to the duration of the single longest task rather than the sum of all tasks.
+ The Lesson: "Wait only when you must." Use structured concurrency to trigger work as early as possible and only await the results when the data is actually needed for the next step.
+ 
+ */
+
+
+//Concurrency -to run multiple pieces of code at the same.
+
+//async: Marks a function as one that might take some time and can be "paused."
+
+//await: Tells the program, "Wait here for the result of this async function before moving to the next line."
+
+
+// using concurrency
+
+func fetchWeather() async -> String {
+
+    //maybe it waits for 2 seconds to download
+    return "Sunny, 25 degrees celsius."
+
+}
+
+ 
+
+
+// 1. Define the work
+func feetchWeather() async -> String {
+    // A shorter sleep to test (1 second)
+    try? await Task.sleep(nanoseconds: 1_000_000_000)
+    return "Sunny, 25°C"
+}
+
+// 2. Wrap it in a Task so it has its own thread to run on
+Task {
+    print("Step 1: Requesting weather...")
+
+    let result = await feetchWeather()
+
+    print("Step 2: Done!")
+    print("Final Result: \(result)")
+}
+
+
+print("Main thread is staying awake...")
+
+
+
+
+
+func ffetchWeather() async -> String {
+    // Simulate a 2-second delay
+    try? await Task.sleep(nanoseconds: 2_000)
+    return "Sunny, 25°C"
+}
+
+print("Starting...")
+let weather = await ffetchWeather()
+print("Result: \(weather)")
+
+
+//We do not perform the time-taking operation on the main thread.
+//Main threads only has UI events, so events can happen quickly. For activities like downloading or other similar tasks, we use background thread so the UI isn't frozen when tasks like downloading are in progress.
+
+//Main thread (everything the user sees and touches): Updating labels, showing images, and responding to button taps. (fast and snappy)
+
+//Background thread: Activities like downloading, sorting a list, processing an image ect.
+
+
+// dispatch.main.async  -> to go to main thread (it can only be User interface otherwise will crash or lag)
+//dispatch.global().async -> to go to background thread (it can be User interface, user initiated and default, utility (the user doesn't track actively), background (tasks like updating, downloading)
+
+
+
+
+
+
+func FetchWeather (city: String, delay: UInt64) async ->String {
+    
+    try? await Task.sleep(nanoseconds: delay)
+    return "\(city): 15 degrees celsius"
+}
+
+
+//Each task is performed simultaneously with the delay mentioned. If all the tasks have same delay, we wouldn't be sure of the order of the tasks.
+
+//Task 1
+Task {
+    let weather = await FetchWeather(city: "London", delay: 1_000_000_000)
+    print("A completed: \(weather)")
+}
+
+//Task 2
+Task {
+    let weather = await FetchWeather(city: "Paris", delay: 2_000_000_000)
+    print("B completed: \(weather)")
+}
+
+//Task 3
+Task {
+    let weather = await FetchWeather(city: "Pune", delay: 3_000_000_000)
+    print("C completed: \(weather)")
+}
+
+print("Main thread: Weather report for London, Paris and Pune.")        //this is printed first
+
+
+
+Task {
+    async let weatherA = FetchWeather(city: "London", delay: 1_000_000_000)
+    async let weatherB = FetchWeather(city: "Paris", delay: 4_000_000_000)
+    
+    // This line waits for BOTH to finish
+    let results = await [weatherA, weatherB]
+    print("All weather reports received: \(results)")
+}
+
+
+
+
+// Task Group: A group that downloads 3 city temperatures at once
+await withTaskGroup(of: String.self) { group in
+    let cities = ["London", "Paris", "Pune"]
+    
+    for city in cities {
+        group.addTask {
+            return await FetchWeather(city: city, delay: 1_000_000_000)
+        }
+    }
+    
+    // We collect them as they finish
+    for await result in group {
+        print("Received: \(result)")
+    }
+}
+
+//async-let: used for fixed number of tasks, its simple, ex: Getting a user's Profile + Friends list.
+
+//Task Group: used for unknown or dynamic number of tasks. Requires a block and a loop, ex: Getting all 50 photos in an album.
+
+
+
+//Task Group - Different tasks, same result type
+
+
+func checkDatabase() async throws -> String {
+    try await Task.sleep(nanoseconds: 500_000_000)
+    return "Database OK"
+}
+
+func fetchProfilePic() async throws-> String {
+    try await Task.sleep(nanoseconds: 300_000_000)
+    return "Image Downloaded"
+}
+
+func checkForUpdates() async throws -> String {
+    try await Task.sleep(nanoseconds: 200_000_000)
+    return "No updates"
+}
+
+let results = await withTaskGroup(of: String.self) { group in
+    
+    // Task 1: Check the database
+    group.addTask {
+        return await checkDatabase() // Returns Database OK
+    }
+    
+    // Task 2: Download a profile picture
+    group.addTask {
+        return await fetchProfilePic() // Returns Image Downloaded
+    }
+    
+    // Task 3: Check for app updates
+    group.addTask {
+        return await checkForUpdates() // Returns No updates
+    }
+    
+    // Collect all different statuses into one array
+    var collector: [String] = []
+    for await status in group {
+        collector.append(status)
+    }
+    return collector
+}
+
+
