@@ -2043,3 +2043,192 @@ guard let url = URL(string: urlString) else {
 
 
 
+
+
+
+
+
+
+
+/*
+ 
+ 
+ DATE: 23-03-2026
+ 
+ Revision: DispatchQueues & Thread Management
+ Topic: Grand Central Dispatch (GCD)
+
+ 1. Conceptual Understanding
+ Grand Central Dispatch (GCD): I learned that GCD is the engine Swift uses to manage multi-threading. It uses Queues to decide which thread handles which piece of work.
+
+ The Main Queue: The most important queue. It is Serial (one task at a time) and handles everything the user sees. If this queue is blocked, the app freezes.
+
+ Global Queues: System-provided Concurrent queues. They are divided by Quality of Service (QoS) levels to help the system prioritize battery life and CPU power.
+
+ Async vs. Sync:
+
+ async: "Fire and forget." The current thread continues immediately while the task runs elsewhere.
+
+ sync: "Wait here." The current thread pauses until the dispatched task is completely finished.
+
+ 2. Logic & Implementation
+ Task: Coordinating multiple background operations and ensuring UI safety.
+
+ The "Main-Background-Main" Pattern: I practiced the standard industry workflow:
+
+ Start on Main (User triggers action).
+
+ Move to Global (Perform heavy work/API calls).
+
+ Return to Main (Update the UI with results).
+
+ DispatchGroup: I implemented group.enter() and group.leave() to synchronize multiple independent tasks. I used group.notify to trigger a final action only after every task in the group reached completion.
+
+ Delayed Execution: I used asyncAfter to trigger code precisely after a deadline, which is useful for splash screens or timed UI dismissals.
+
+ 3. Safety & Edge Cases
+ Priority (QoS) Levels: I learned to categorize tasks to save system resources:
+
+ .userInteractive: For animations or immediate feedback.
+
+ .utility: For tasks the user is aware of (loading bars).
+
+ .background: For invisible tasks like indexing or syncing.
+
+ Nested Execution Order: I experimented with nested queues and learned that dispatching async to the same queue (Main-in-Main) puts the new task at the very end of the line, allowing the current block to finish first.
+
+ Deadlock Awareness: I practiced avoiding DispatchQueue.main.sync inside the main thread, as it causes the app to wait for a task that can never start—permanently freezing the app.
+
+ 4. Critical Lessons
+ The Problem: When running multiple Task blocks or DispatchQueues, the print statements were appearing in an unpredictable order.
+
+ The Solution: I realized this is the nature of Concurrency. Unless tasks are in a Serial queue or synchronized via a DispatchGroup, the system finishes them based on CPU availability and task complexity, not the order they were written.
+
+ The Lesson: Always update the UI on the Main Thread. Even if a background task finishes perfectly, calling label.text from a global queue can lead to erratic behavior or silent crashes.
+
+ 
+ 
+ */
+
+
+//Main Queue - Runs on the main thread. High priority. - Updating UI, handling user input.
+//Global Queues - System-provided background threads. - Data processing, API calls, heavy math.
+//Custom queues - Custom Queues - Queues you create yourself. - Specific background tasks where you need control.
+
+
+//async method - It tells the queue to run the code but does not make the current thread wait. Your app continues running immediately.
+
+DispatchQueue.global().async {
+    //Runs in the background
+    print("This is the background thread running. ")
+    
+    //Runs in the main thread
+    DispatchQueue.main.async {
+        self.label.text("Thread ran and finished executing.")
+    }
+}
+
+//sync method - It tells the queue to run the code and make the current thread wait until the next task is finished
+
+
+//asyncAfter (delayed async)
+
+DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+    // Runs after a 2 second delay
+    print("Hello after 2 seconds")
+}
+
+
+//Quality of Service (qos) - determines the priority of the tasks
+
+//When using background queues, we can tell the system how important the task is using QoS classes:
+
+//.userInteractive: Immediate (UI updates/animations).
+
+//.userInitiated: Fast (Loading a document or results of a user click).
+
+//.utility: Long-running (Downloading data, progress bars).
+
+//.background: Not visible to user (Indexing, syncing, backups).
+
+
+DispatchQueue.global(qos: .background) .async {
+    //low priority - runs in the background thread
+    
+    print("This task is running on the background queue.")
+}
+
+
+// A DispatchGroup allows you to aggregate a set of tasks and synchronize behaviors on them. You "enter" the group when a task starts and "leave" when it finishes.
+
+let group = DispatchGroup()
+
+//Task 1
+group.enter()
+DispatchQueue.global().async {
+    print("Task 1 has started.")
+    sleep(2)
+    print("Task 1 finished.")
+    group.leave()
+}
+
+//Task 2
+group.enter()
+DispatchQueue.global().async {
+    print( "Task 2 has started.")
+    sleep(1)
+    print("Task 2 finished.")
+    group.leave()
+}
+
+group.notify(queue: .main) {
+    print("Both tasks have finished executing.")
+}
+
+
+//Nested DispatchQueues
+
+//Background to main : we perform a slow operation (like fetching data or processing an image) and then nested inside it, you call the main queue to show the result.
+
+DispatchQueue.global(qos: .userInitiated) .async {
+    let result = calculusResult()      //let it be a function that requires more processing
+    
+    DispatchQueue.main.async {
+        self. label.text = "Result: \(result)"
+    }
+}
+
+
+//Main in Main
+
+DispatchQueue.main.async {
+    print("A")
+    
+    DispatchQueue.main.async {
+        print("B")                      //This is added to the back of the line
+    }
+    
+    print("C")
+}
+
+//Prints A, C, B
+
+
+
+//Main-background-main
+
+DispatchQueue.main.async {
+    print("A")
+    
+    DispatchQueue.global().async {
+        print("B")
+        DispatchQueue.main.async {
+            print("C")
+        }
+    }
+}
+
+//Prints A, B, C
+
+
+ 
