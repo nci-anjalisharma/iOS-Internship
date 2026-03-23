@@ -1798,3 +1798,248 @@ let results = await withTaskGroup(of: String.self) { group in
 }
 
 
+
+
+
+/*
+ 
+ Date: 18-03-2026
+ 
+ 
+ Topic: Escaping Closures, Actors, and Networking
+
+ 1. Conceptual Understanding
+ Closure Lifecycles: I learned the critical difference between Non-escaping (executed and destroyed within the function) and Escaping closures. An escaping closure is "saved" to be run later, usually after a background task finishes or by being stored in a property.
+
+ Actors: These are a new reference type in Swift designed for Thread Safety. Unlike classes, actors ensure that only one thread can access their mutable state at a time, preventing "Data Races" without manual locking code.
+
+ The Main Actor: I discovered @MainActor, a globally unique actor that ensures code (like UI updates) always runs on the Main Thread.
+
+ 2. Logic & Implementation
+ Task: Simulating asynchronous image downloads and protecting shared data (like a Bank Account) from concurrent access.
+
+ Escaping Patterns: I implemented @escaping in two key ways:
+
+ Asynchronous Callbacks: Using DispatchQueue to return data after the main function has already finished.
+
+ Storage: Assigning closures to external variables (like storedCompletion) for execution upon user events.
+
+ Autoclosures: I used @autoclosure to wrap expressions automatically. This delays the execution of code (like customersInLine.remove(at: 0)) until the closure is actually called, rather than when it's passed as an argument.
+
+ URLSession Networking: I practiced the "Handshake" process: converting a String to a URL, requesting data via URLSession, and waiting for the server to stream data packets back into a usable Data object.
+
+ 3. Safety & Edge Cases
+ Strong Reference Cycles: In escaping closures, I learned to use [weak self] and guard let self = self to prevent memory leaks. This ensures that if a view controller is dismissed while a download is pending, the app doesn't keep it in memory.
+
+ Main Thread Hopping: Since networking happens on a background thread, I practiced jumping back to the main thread using DispatchQueue.main.async or @MainActor to update labels and images safely.
+
+ Actor Isolation: I learned that accessing an actor's properties or methods from the outside requires await, acknowledging that the call might be suspended if the actor is currently busy with another task.
+
+ 4. Critical Lessons
+ The Problem: My app was crashing or showing "Thread Sanitizer" warnings when multiple tasks tried to update the same balance or UI element.
+
+ The Solution: Actors and MainActor. By moving shared data into an actor, Swift automatically manages the "line" of threads waiting to access that data. By marking UI classes with @MainActor, I guaranteed that all visual updates happen on the correct thread.
+
+ The Lesson: Execution order matters. In an escaping closure, the code following the function call (e.g., "3. Function body finished") usually runs before the code inside the closure (e.g., "4. Closure executed").
+ 
+ 
+ */
+
+
+//Non-escaping closures - closure is executed within the body of the function. Once the function hits its closing brace, the closure is deallocated.
+// compiler knows the closure won't leave the function, it can perform better memory optimizations.
+
+
+func performSimpleTask(action: () -> Void) {
+    print("Starting function...")
+    action() //closure runs here
+    print("Ending function.")
+}
+// The closure is gone once we get here
+
+
+//escaping closure - An escaping closure is "held onto" to be executed later. This usually happens in two scenarios:
+
+// Asynchronous Tasks: The function starts a background task (like a network call) and returns immediately, but the closure runs whenever the data arrives.
+
+// Storage: You assign the closure to a variable or property outside the function.
+
+
+var completionHandlers: [() -> Void] = []
+
+func performAsyncHeaders(completion: @escaping () -> Void) {
+    // We store the closure in an external array so it escapes the function
+    completionHandlers.append(completion)
+    
+    // Or we use it in a delayed block
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+        completion()
+    }
+}
+
+
+func loadData() {
+    // 1. The escaping closure begins
+    someService.fetchRemoteData { [weak self] (result) in
+        
+        // 2. We are now likely on a background thread.
+        // We use 'guard' to make sure 'self' still exists.
+        guard let self = self else { return }
+
+        // 3. To fix the Main Actor error, we hop back to the main thread manually.
+        DispatchQueue.main.async {
+            self.myLabel.text = result
+            print("UI Updated safely!")
+        }
+    }
+}
+
+class DataManager {
+    var storedCompletion: (() -> Void)?
+
+    // This must have @escaping because we are saving it to 'storedCompletion'
+    func saveForLater(completion: @escaping () -> Void) {
+        self.storedCompletion = completion
+    }
+}
+
+
+// we send a request to a server, the function finishes immediately but the data comes back seconds later
+
+func downloadImage(from url: String, completion: @escaping (Bool) -> Void) {
+    print("1. Starting download...")
+    
+    // Simulating a background network task
+    DispatchQueue.global().async {
+        // Download happens
+        print("2. Download finished on background thread.")
+        
+        // We call the closure after the function has already returned
+        completion(true)
+    }
+    
+    print("3. Function body finished!")
+}
+
+
+
+// Usage
+downloadImage(from: "https://example.com/cat.jpg") { success in
+    print("4. Closure executed: Success is \(success)")
+}
+
+//Execution Order: 1 -> 3 -> 2 -> 4 because 4 happens after 3, the closure escaped the function.
+
+
+
+// A property to store the closure for later
+    var onAlertDismissed: (() -> Void)?
+
+    // We MUST use @escaping because we are assigning 'action' to a property
+    func setDismissAction(action: @escaping () -> Void) {
+        self.onAlertDismissed = action
+    }
+
+    func userTappedDone() {
+        // Run the stored closure whenever we want
+        onAlertDismissed?()
+    }
+
+
+
+
+
+
+//Autoclosures - closure that’s automatically created to wrap an expression that’s being passed as an argument to a function. It doesn’t take any arguments, and when it’s called, it returns the value of the expression that’s wrapped inside of it
+
+
+var customersInLine = ["Alex", "Bob", "Charlie", "Dan"]
+print(customersInLine.count)
+//prints 5
+
+let customerProvider = { customersInLine.remove(at: 0) }
+print(customersInLine.count)
+//prints 5
+
+
+print("Now serving \(customerProvider())!")
+// Prints "Now serving Chris!"
+print(customersInLine.count)
+//prints 4
+
+
+// Actors - An actor is an object that protects access to mutable data by forcing code to take turns accessing that data. They are like classes but thread-safe. Its like a reference type.
+
+// If two threads try to change the same variable of a class at the same time, app would crash or behave strangely and to avoid this we have to manually write complex locks or use DispatchQueue.sync.
+// Actors do this work for you automatically.
+//If another piece of code tries to talk to the actor while it’s busy, that code has to wait in line.
+
+actor BankAccount {
+    var balance: Int = 0
+    
+   func deposit(amount: Int) {
+        balance += amount
+    }
+}
+
+// Main Actor is a special, globally unique actor that represents the Main Thread. Using @MainActor we can mark a whole class (like a View Model) or just a single function to stay on the main thread.
+
+
+@MainActor
+//This is main thread
+class ChatManager {
+    func sendMessage(_ message: String) async {
+        var log: [String] = []
+        log.append(message)
+    }
+}
+
+
+
+
+//Macros
+
+struct Product {
+    let name: String
+    let price: Double
+}
+
+let products = [Product(name: "iPhone", price: 999), Product(name: "iPad", price: 799)]
+
+// Filter: Find products cheaper than 800
+let cheapItems = products.filter { $0.price < 800 }
+
+
+//Image downloader
+
+/*
+ 1. The Transformation: String → URL
+You can’t just give URLSession a String. You have to "initialize" a URL object. This checks if the string is actually a valid web address (e.g., it has a https://, no weird spaces, etc.).
+*/
+
+
+let urlString = "https://picsum.photos/200"
+guard let url = URL(string: urlString) else {
+    print("Invalid Address")
+    return
+}
+
+
+/*
+ 
+ 2. The Handshake: URLSession → Internet
+ When you call try await URLSession.shared.data(from: url), the following happens:
+
+ Request: Your phone sends a "GET" request to the server at that address.
+
+ Server Check: The server (e.g., Picsum) looks at the request. It says, "Okay, I have an image for this request."
+
+ The Stream: The server starts sending the image back in tiny "packets" of data.
+
+ Completion: URLSession waits until every single packet has arrived, bundles them into one Data object, and hands it back to your variable.
+ 
+ */
+
+
+
+
