@@ -2194,7 +2194,7 @@ DispatchQueue.global(qos: .userInitiated) .async {
     let result = calculusResult()      //let it be a function that requires more processing
     
     DispatchQueue.main.async {
-        self. label.text = "Result: \(result)"
+        self.label.text = "Result: \(result)"
     }
 }
 
@@ -2232,3 +2232,193 @@ DispatchQueue.main.async {
 
 
  
+/*
+ 
+ DATE: 24-03-2026
+ 
+ Revision: ARC & Advanced Dispatching
+ Topic: Memory Management (ARC) and DispatchWorkItem
+
+ 1. Conceptual Understanding
+ Automatic Reference Counting (ARC): Swift’s system for tracking and managing your app's memory. It only deallocates an object when its "reference count" drops to zero.
+ Reference Strengths:
+ Strong: The default. It tells Swift, "Keep this object alive as long as I’m holding it."
+ Weak: Used to break Strong Reference Cycles (Retain Cycles). It doesn't increase the count and automatically becomes nil if the object is destroyed.
+ Unowned: Similar to weak but used for non-optional values. It assumes the referenced object will outlive the reference itself.
+ Sync vs. Async:
+ .sync: Blocks the current thread. Use only when you absolutely need a result before moving to the next line of code.
+ .async: Offloads the task and immediately moves to the next line. This is the standard for non-blocking UI.
+
+ 
+ 2. Logic & Implementation
+ Task: Preventing memory leaks in parent-child relationships and implementing a cancelable search feature.
+ Safe Background Fetching: I practiced the [weak self] pattern inside DispatchQueue.global().async blocks. By using a guard let self = self else { return }, I ensure that if the user navigates away and the object is deallocated, the background task won't try to update a "ghost" object.
+ DispatchWorkItem: I implemented a "Debounce" logic for a search bar. By storing the task in a variable, I can call .cancel() on the previous task every time the user types a new letter, ensuring only the most recent search actually executes.
+
+ 
+ 3. Safety & Edge Cases
+ The Main Thread Freeze: I learned that running .sync with a heavy task on the DispatchQueue.main will lead to a Deadlock or a frozen UI.
+ Unowned Crashes: I realized that if an unowned reference points to an object that has been deallocated, the app will crash instantly. This is why weak is generally the safer choice for most delegates and closures.
+ Capture Lists: I practiced including variables in the closure's capture list [weak self] to explicitly define how memory should be handled during asynchronous execution.
+
+ 
+ 4. Critical Lessons
+ The Problem: My app was using more and more memory over time even after closing certain screens.
+ The Solution: I identified a Retain Cycle where two classes held strong references to each other. By changing one of those references to weak, I allowed ARC to properly deallocate both objects when they were no longer needed.
+ The Lesson: "Strong for parents, weak for children." In a relationship like Person and Dog, the person should own the dog strongly, but the dog should refer to its owner weakly to avoid a memory deadlock.
+ 
+ */
+
+
+//synchronous queue : When you call .sync, the current execution pauses and waits for the task to finish.
+
+//You use it when you must have a value from a different queue before you can proceed. For example, ensuring "Thread Safety" when reading a shared variable.
+
+print("Starting task")
+
+// If this is run on the main thread, the app will freeze for 5 seconds
+DispatchQueue.global().sync {
+    Thread.sleep(forTimeInterval: 5)
+    print("Finished work")
+}
+
+print("Ending task")
+
+//output order: Start, Finished (freezes until the task completes), End
+
+
+//When you call .async, the current thread "schedules" the task and moves on immediately.
+
+print("Starting task")
+
+DispatchQueue.global().async {
+    Thread.sleep(forTimeInterval: 2)
+    print("Finished work")
+}
+
+print("Ending task")
+
+//output order: Start, End, Finished (gave 2 seconds delay here)
+ 
+
+
+//DispatchQueue with escaping closures
+
+func fetchUser(completion: @escaping (User?) -> Void) {
+    
+    // Moving to a background thread for the heavy work
+    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        
+            guard let self = self else { return }
+        
+        // fetching data
+        let fetchedUser = User(id: 1, name: "Alex")
+        
+        // jumping back to the main thread to return the result
+        // Most completion handlers update the UI, so they must be on main.
+        DispatchQueue.main.async {
+            completion(fetchedUser)
+        }
+    }
+}
+
+
+
+class UserProfile {
+    var name = "Alice"
+
+    func updateNameFromServer() {
+    
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            
+            // simulating a delay
+            Thread.sleep(forTimeInterval: 2)
+            let newName = "User_547"
+            
+        
+            guard let self = self else { return }
+            
+            // going to the main thread to update the UI
+            DispatchQueue.main.async {
+                self.name = newName
+                print("Name updated safely on Main Thread!")
+            }
+        }
+    }
+}
+
+
+
+
+//ARC - strong, weak and unowned
+
+//strong - When you declare a variable normally, it is a strong reference. The object will stay in memory as long as at least one strong reference exists. Can be an Optional or Non-Optional.
+//Use strong for everything else where you want to ensure the object stays alive while you are using it.
+
+class Person {
+    //some methods
+}
+
+
+
+var owner: Person? = Person(name: "Alex") // Count = 1
+var dog: Dog? = Dog(name: "Buddy")       // Count = 1
+
+owner?.pet = dog  // Dog count = 2
+dog?.owner = owner // Person count = 2
+
+
+
+//weak - A weak reference does not increase the reference count. If the strong references are gone, the object is deallocated, and the weak reference automatically becomes nil. Must be Optional.
+//Use weak 95% of the time when you want to avoid memory leaks. It is the "safe" option because it handles the object disappearing by turning into nil.
+
+class Dog {
+    weak var owner: Person? // does not keep the Person alive
+}
+
+
+//unowned - Like weak, unowned does not increase the reference count. However, it assumes the object will never be nil while the reference is in use. Must be Non-Optional
+//Use unowned only when you are mathematically certain the two objects will be destroyed at the exact same time (like a User and their AccountID).
+class CreditCard {
+    unowned let owner: Person // A card cannot exist without an owner
+    init(owner: Person) { self.owner = owner }
+}
+
+
+
+
+
+//Creating and cancelling a task
+
+
+//search bar
+var searchTask: DispatchWorkItem?
+ 
+
+
+@MainActor   //using main actor here
+func performSearch(query: String) {
+    
+    searchTask?.cancel()       //cancelling any existing query
+    
+    let searchItem = DispatchWorkItem {
+        print("Searching for \(query)")
+    }
+        
+    if let task = searchTask {
+        DispatchQueue.global().asyncAfter(deadline: .now() + 1, execute: task)
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
