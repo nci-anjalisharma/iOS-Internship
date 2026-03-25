@@ -2413,6 +2413,118 @@ func performSearch(query: String) {
 
 
 
+/*
+ 
+ DATE: 25-03-2026
+ 
+ 
+ */
+
+
+/* Application Life cycle
+ 
+ 
+ 1. The Core States
+ Think of these as the "moods" your app can be in:
+
+ Not Running: The app hasn't been launched or was terminated by the system/user.
+
+ Inactive: The app is running in the foreground but not receiving events. This happens during a brief transition (like a phone call coming in or pulling down the Control Center).
+
+ Active: The "normal" state. The app is in the foreground and interacting with the user.
+
+ Background: The app is no longer visible on screen but is still executing code (like finishing a download or playing music).
+
+ Suspended: The app is in the background but not executing code. The system keeps it in memory to make reopening fast, but it’s essentially "asleep."
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+In your AppDelegate.swift, you’ll see @main. This attribute tells the system: "Start here." It handles the low-level process of setting up the app's infrastructure.
+
+The App Delegate (The "Process" Manager)
+This handles events that affect the entire app, regardless of what is on the screen.
+
+Launch: didFinishLaunchingWithOptions is your first chance to run code (like initializing Firebase or SDKs).
+
+System Events: Handling memory warnings or app termination.
+
+Scene Configuration: It tells the system which "Scene Configuration" to use when a new window is needed.
+
+
+It doesn't care about what's happening on the screen (that's the Scene Delegate's job); it cares about the app starting, stopping, and how many "windows" (scenes) the app is allowed to have. a. It lanumches and terminate the app.
+ 
+ 
+
+ 
+ Methods in App delegate;
+ 1. @main - This is the starting line of the app. Without this, the system wouldn't know which piece of code to execute fi,rst when the user taps your app icon
+ 
+ 2. didFinishLaunchingWithOptions : It is called exactly once when the app process first starts up. It initialises things that the whole app needs. Example: Setting up a database, initializing Firebase/Analytics, or checking if the user is already logged in.
+
+ 
+ 3. configurationForConnecting: through this app delegates commumicate to the Scene delegate
+ When the user opens the app, the system asks the App Delegate, "Hey, I need to show a window. Which configuration should I use?"
+ The Result: It returns a UISceneConfiguration (usually named "Default Configuration" in your Info.plist). This configuration is what tells the app to look for the SceneDelegate.swift file to set up the UI.
+ 
+ 4. didDiscardSceneSessions: This happens when the user swipes up on the app switcher to kill a specific window (common on iPad where you can have multiple windows of the same app).
+ 
+ The Logic: If the user "throws away" a window, this method lets you clean up any data specific to that window (like a half-finished draft) so it doesn't waste memory.
+ 
+ 
+ [delegates are like special assistants -any complex UI element has its own delegate : Ex: Knows what to do when that button or text box is interacted with ( UIApplicationDelegate)]
+ 
+ 
+ 
+Scene Delegate:
+ It is responsible for different scenes
+ 1. sceneWillEnterForeground  - The app is moving from the background to the foreground. Time to refresh data.
+ 2. sceneDidBecomeActive - The app is now the "main attraction." It’s ready for user input.
+ 3. sceneWillResignActive - A temporary interruption (like a notification) is happening. The app is still visible but losing focus.
+ 4. sceneDidEnterBackground - app is hidden, we should free up user data and free the resources here
+ 5. sceneDidDisconnet - system reclaimed the scene, its gone from the memory.
+ 
+ 
+ 
+ 
+Flow:
+ 
+ When you tap your app icon, the journey usually looks like this:
+
+ Launch: The system calls didFinishLaunchingWithOptions in your AppDelegate. This is where you do your initial setup (like configuring databases or analytics).
+
+ Activation: The SceneDelegate takes over. It moves the app from Inactive to Active.
+
+ The "Pause": If you swipe up halfway to switch apps, the app moves to Inactive.
+
+ Backgrounding: If you go to the Home screen, the app moves to Background.
+
+ Suspension: After a few seconds in the background, if the app isn't doing a specific task, the system freezes it (Suspended).
+
+ 
+ 
+ Responsibilty:
+ App Delegate - start and termination of the app, push notifications
+ Scene Delegate - managing windows, like if in an iPad there are two windows of the app, there are two scene delegates.
+ ViewController - manages what the user sees and touches on a specific screen.
+ 
+ 
+
+ 
+ 
+ 
+ 
+*/
+
+
+
+
+
+
 
 
 
